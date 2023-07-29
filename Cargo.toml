@@ -1,0 +1,25 @@
+[package]
+name = "sif-rtree"
+description = "simple, immutable, flat R-tree"
+version = "0.1.0"
+edition = "2018"
+rust-version = "1.55"
+authors = ["Adam Reichold <adam.reichold@t-online.de>"]
+license = "MIT OR Apache-2.0"
+readme = "README.md"
+documentation = "https://docs.rs/sif-rtree"
+repository = "https://github.com/adamreichold/sif-rtree"
+keywords = ["rtree"]
+categories = ["data-structures", "simulation", "science::geo"]
+
+[dependencies]
+num-traits = "0.2"
+serde = { version = "1.0", features = ["derive"], optional = true }
+
+[dev-dependencies]
+memmap2 = "0.7"
+proptest = "1.1"
+rstar = "0.11"
+
+[package.metadata.docs.rs]
+all-features = true
