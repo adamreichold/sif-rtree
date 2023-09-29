@@ -4,7 +4,7 @@
 //! A simple library implementing an immutable, flat representation of an [R-tree](https://en.wikipedia.org/wiki/R-tree)
 //!
 //! The library uses the same overlap-minimizing top-down bulk loading algorithm as the [rstar](https://github.com/georust/rstar) crate.
-//! Its supports several kinds of spatial queries and has a simple implementation as the objects in the index are fixed after construction.
+//! Its supports several kinds of spatial queries, nearest neighbour search and has a simple implementation as the objects in the index are fixed after construction.
 //! This also enables a flat and thereby cache-friendly memory layout which can be backed by memory maps.
 //!
 //! The library provides optional integration with [serde] for (de-)serialization of the trees.
@@ -108,6 +108,7 @@
 mod build;
 mod iter;
 mod look_up;
+mod nearest;
 
 pub use build::DEF_NODE_LEN;
 
@@ -130,7 +131,7 @@ pub trait Point: Clone {
     /// Access the coordinate value of the point along the given `axis`
     fn coord(&self, axis: usize) -> Self::Coord;
 
-    /// Builds a new point by specifying its coordinate values along each axisw
+    /// Builds a new point by specifying its coordinate values along each axis
     ///
     /// # Example
     ///

@@ -4,7 +4,7 @@
 [![docs.rs](https://docs.rs/sif-rtree/badge.svg)](https://docs.rs/sif-rtree)
 [![github.com](https://github.com/adamreichold/sif-rtree/actions/workflows/test.yaml/badge.svg)](https://github.com/adamreichold/sif-rtree/actions/workflows/test.yaml)
 
-A simple library implementing an immutable, flat representation of an [R-tree](https://en.wikipedia.org/wiki/R-tree) supporting several kinds of spatial queries and backing storage based on memory maps.
+A simple library implementing an immutable, flat representation of an [R-tree](https://en.wikipedia.org/wiki/R-tree) supporting several kinds of spatial queries, nearest neighbour search and backing storage based on memory maps.
 
 ## License
 
