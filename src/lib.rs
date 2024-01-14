@@ -191,6 +191,7 @@ where
 
     type Coord = T;
 
+    #[inline]
     fn coord(&self, axis: usize) -> Self::Coord {
         self[axis]
     }

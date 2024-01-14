@@ -25,7 +25,7 @@ where
         let root_node = build(node_len, objects, &mut nodes, &mut next_nodes);
         debug_assert_eq!(root_node, nodes.len() - 1);
 
-        // The whole tree is reversed, so that iteration visit increasing memory addresses which measurably improves performance.
+        // The whole tree is reversed, so that iteration visits increasing memory addresses which measurably improves performance.
         nodes.reverse();
 
         for node in &mut nodes {
