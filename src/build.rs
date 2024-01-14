@@ -135,7 +135,7 @@ where
 
     {
         // Padding is inserted into the first twig, so that iteration is uniform over the following twigs.
-        let (len, pad) = twig_len_pad(len.get());
+        let (len, pad) = twig_len_pad(&len);
 
         nodes.reserve(len + 1);
 
@@ -191,10 +191,12 @@ where
 mod tests {
     use super::*;
 
+    use std::ops::ControlFlow;
+
     use proptest::test_runner::TestRunner;
 
     use crate::{
-        iter::BranchIter,
+        iter::branch_for_each,
         tests::{random_objects, RandomObject},
     };
 
@@ -212,9 +214,13 @@ mod tests {
         branches: &mut Vec<usize>,
         leaves: &mut Vec<&'a RandomObject>,
     ) {
-        let branch = BranchIter::new(nodes, idx);
-        branches.push(branch.len());
-        for idx in branch {
+        let (node, rest) = nodes[idx..].split_first().unwrap();
+        let len = match node {
+            Node::Branch { len, .. } => len,
+            Node::Twig(_) | Node::Leaf(_) => unreachable!(),
+        };
+        branches.push(len.get());
+        branch_for_each(len, rest, |idx| {
             match &nodes[idx] {
                 Node::Branch { .. } => collect_index(nodes, idx, branches, leaves),
                 Node::Twig(_) => unreachable!(),
@@ -223,7 +229,8 @@ mod tests {
                     leaves.push(obj);
                 }
             }
-        }
+            ControlFlow::Continue(())
+        });
     }
 
     fn collect_rstar_index<'a>(

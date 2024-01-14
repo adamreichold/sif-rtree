@@ -2,7 +2,7 @@ use std::ops::ControlFlow;
 
 use num_traits::Zero;
 
-use crate::{iter::BranchIter, Distance, Node, Object, Point, RTree, ROOT_IDX};
+use crate::{iter::branch_for_each, Distance, Node, Object, Point, RTree, ROOT_IDX};
 
 impl<O, S> RTree<O, S>
 where
@@ -117,15 +117,11 @@ where
     Q: FnMut(&'a Node<O>) -> bool,
     V: FnMut(&'a O) -> ControlFlow<()>,
 {
-    let node = &args.nodes[idx];
+    let (node, rest) = args.nodes[idx..].split_first().unwrap();
 
     if (args.query)(node) {
         match node {
-            Node::Branch { .. } => {
-                for idx in BranchIter::new(args.nodes, idx) {
-                    look_up(args, idx)?;
-                }
-            }
+            Node::Branch { len, .. } => branch_for_each(len, rest, |idx| look_up(args, idx))?,
             Node::Twig(_) => unreachable!(),
             Node::Leaf(obj) => (args.visitor)(obj)?,
         }

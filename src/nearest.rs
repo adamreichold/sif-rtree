@@ -5,7 +5,7 @@ use std::ops::ControlFlow;
 
 use num_traits::{Float, Zero};
 
-use crate::{iter::BranchIter, Distance, Node, Object, Point, RTree, ROOT_IDX};
+use crate::{iter::branch_for_each, Distance, Node, Object, Point, RTree, ROOT_IDX};
 
 impl<O, S> RTree<O, S>
 where
@@ -88,26 +88,28 @@ where
     });
 
     while let Some(item) = items.pop() {
-        match &nodes[item.idx] {
-            Node::Branch { .. } => {
-                for idx in BranchIter::new(nodes, item.idx) {
-                    let obj_aabb;
+        let (node, rest) = nodes[item.idx..].split_first().unwrap();
 
-                    let (aabb, distance_2) = match &nodes[idx] {
-                        Node::Branch { aabb, .. } => (aabb, aabb.distance_2(target)),
-                        Node::Twig(_) => unreachable!(),
-                        Node::Leaf(obj) => {
-                            obj_aabb = obj.aabb();
+        match node {
+            Node::Branch { len, .. } => branch_for_each(len, rest, |idx| {
+                let obj_aabb;
 
-                            (&obj_aabb, obj.distance_2(target))
-                        }
-                    };
+                let (aabb, distance_2) = match &nodes[idx] {
+                    Node::Branch { aabb, .. } => (aabb, aabb.distance_2(target)),
+                    Node::Twig(_) => unreachable!(),
+                    Node::Leaf(obj) => {
+                        obj_aabb = obj.aabb();
 
-                    if filter(aabb, distance_2) {
-                        items.push(NearestItem { idx, distance_2 });
+                        (&obj_aabb, obj.distance_2(target))
                     }
+                };
+
+                if filter(aabb, distance_2) {
+                    items.push(NearestItem { idx, distance_2 });
                 }
-            }
+
+                ControlFlow::Continue(())
+            })?,
             Node::Twig(_) => unreachable!(),
             Node::Leaf(obj) => visitor(obj, item.distance_2)?,
         }

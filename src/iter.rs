@@ -1,80 +1,43 @@
-use std::iter::FusedIterator;
-use std::slice::Iter;
+use std::num::NonZeroUsize;
+use std::ops::ControlFlow;
 
 use crate::{Node, Object, TWIG_LEN};
 
-pub struct BranchIter<'a, O>
+pub fn branch_for_each<O, V>(
+    len: &NonZeroUsize,
+    twigs: &[Node<O>],
+    mut visitor: V,
+) -> ControlFlow<()>
 where
     O: Object,
+    V: FnMut(usize) -> ControlFlow<()>,
 {
-    twigs: Iter<'a, Node<O>>,
-    idx: Iter<'a, usize>,
-}
+    let (len, pad) = twig_len_pad(len);
 
-impl<'a, O> BranchIter<'a, O>
-where
-    O: Object,
-{
-    pub fn new(nodes: &'a [Node<O>], idx: usize) -> Self {
-        let (branch, twigs) = nodes[idx..].split_first().unwrap();
+    let mut twigs = twigs[..len].iter();
 
-        let len = match branch {
-            Node::Branch { len, .. } => len,
-            Node::Twig(_) | Node::Leaf(_) => unreachable!(),
-        };
+    let mut twig = match twigs.next().unwrap() {
+        Node::Twig(twig) => &twig[pad..],
+        Node::Branch { .. } | Node::Leaf(_) => unreachable!(),
+    };
 
-        let (len, pad) = twig_len_pad(len.get());
-
-        let mut twigs = twigs[..len].iter();
-
-        let idx = match twigs.next().unwrap() {
-            Node::Twig(twig) => twig[pad..].iter(),
-            Node::Branch { .. } | Node::Leaf(_) => unreachable!(),
-        };
-
-        Self { twigs, idx }
-    }
-}
-
-impl<O> Iterator for BranchIter<'_, O>
-where
-    O: Object,
-{
-    type Item = usize;
-
-    fn next(&mut self) -> Option<Self::Item> {
-        match self.idx.next() {
-            Some(idx) => Some(*idx),
-            None => match self.twigs.next() {
-                Some(Node::Twig(twig)) => {
-                    self.idx = twig.iter();
-
-                    self.idx.next().copied()
-                }
-                Some(Node::Branch { .. }) | Some(Node::Leaf(_)) => unreachable!(),
-                None => None,
-            },
+    loop {
+        for idx in twig {
+            visitor(*idx)?;
         }
+
+        twig = match twigs.next() {
+            Some(Node::Twig(twig)) => twig,
+            Some(Node::Branch { .. } | Node::Leaf(_)) => unreachable!(),
+            None => break,
+        };
     }
 
-    fn size_hint(&self) -> (usize, Option<usize>) {
-        let len = self.len();
-        (len, Some(len))
-    }
+    ControlFlow::Continue(())
 }
 
-impl<O> ExactSizeIterator for BranchIter<'_, O>
-where
-    O: Object,
-{
-    fn len(&self) -> usize {
-        self.twigs.len() * TWIG_LEN + self.idx.len()
-    }
-}
-
-impl<O> FusedIterator for BranchIter<'_, O> where O: Object {}
-
-pub fn twig_len_pad(len: usize) -> (usize, usize) {
+pub fn twig_len_pad(len: &NonZeroUsize) -> (usize, usize) {
+    let len = len.get();
     let quot = len / TWIG_LEN;
     let rem = len % TWIG_LEN;
 
