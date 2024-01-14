@@ -1,6 +1,7 @@
 use std::cmp::Ordering;
 use std::collections::BinaryHeap;
 use std::mem::swap;
+use std::ops::ControlFlow;
 
 use num_traits::{Float, Zero};
 
@@ -16,47 +17,103 @@ where
 {
     /// Find the object nearest to the given `target`
     ///
+    /// Returns a reference to the object and its squared distance to the `target`.
+    ///
     /// Returns `None` if no object has a finite distance to the `target`.
-    pub fn nearest(&self, target: &O::Point) -> Option<&O> {
-        let nodes = self.nodes.as_ref();
+    pub fn nearest(&self, target: &O::Point) -> Option<(&O, <O::Point as Point>::Coord)> {
+        let mut nearest = None;
 
         let mut min_minmax_distance_2 = <O::Point as Point>::Coord::infinity();
 
-        let mut items = BinaryHeap::new();
+        from_near_to_far(
+            self.nodes.as_ref(),
+            target,
+            |aabb, distance_2| {
+                if min_minmax_distance_2 >= distance_2 {
+                    let minmax_distance_2 = minmax_distance_2(aabb, target);
 
-        items.push(NearestItem {
-            idx: ROOT_IDX,
-            distance_2: <O::Point as Point>::Coord::nan(),
-        });
+                    if min_minmax_distance_2 > minmax_distance_2 {
+                        min_minmax_distance_2 = minmax_distance_2;
+                    }
 
-        while let Some(item) = items.pop() {
-            match &nodes[item.idx] {
-                Node::Branch { .. } => {
-                    for idx in BranchIter::new(nodes, item.idx) {
-                        let (aabb, distance_2) = match &nodes[idx] {
-                            Node::Branch { aabb, .. } => (aabb.clone(), aabb.distance_2(target)),
-                            Node::Twig(_) => unreachable!(),
-                            Node::Leaf(obj) => (obj.aabb(), obj.distance_2(target)),
-                        };
+                    true
+                } else {
+                    false
+                }
+            },
+            |object, distance_2| {
+                nearest = Some((object, distance_2));
+                ControlFlow::Break(())
+            },
+        );
 
-                        if min_minmax_distance_2 >= distance_2 {
-                            let minmax_distance_2 = minmax_distance_2(&aabb, target);
+        nearest
+    }
 
-                            if min_minmax_distance_2 > minmax_distance_2 {
-                                min_minmax_distance_2 = minmax_distance_2;
-                            }
+    /// Visit all objects in ascending order of their distance to the given `target`
+    ///
+    /// Yields references to the objects and their squared distances to the `target`.
+    pub fn from_near_to_far<'a, V>(&'a self, target: &O::Point, visitor: V) -> ControlFlow<()>
+    where
+        V: FnMut(&'a O, <O::Point as Point>::Coord) -> ControlFlow<()>,
+    {
+        from_near_to_far(
+            self.nodes.as_ref(),
+            target,
+            |_aabb, _distance_2| true,
+            visitor,
+        )
+    }
+}
 
-                            items.push(NearestItem { idx, distance_2 });
+fn from_near_to_far<'a, O, F, V>(
+    nodes: &'a [Node<O>],
+    target: &O::Point,
+    mut filter: F,
+    mut visitor: V,
+) -> ControlFlow<()>
+where
+    O: Object,
+    O: Distance<O::Point>,
+    O::Point: Distance<O::Point>,
+    <O::Point as Point>::Coord: Float,
+    F: FnMut(&(O::Point, O::Point), <O::Point as Point>::Coord) -> bool,
+    V: FnMut(&'a O, <O::Point as Point>::Coord) -> ControlFlow<()>,
+{
+    let mut items = BinaryHeap::new();
+
+    items.push(NearestItem {
+        idx: ROOT_IDX,
+        distance_2: <O::Point as Point>::Coord::nan(),
+    });
+
+    while let Some(item) = items.pop() {
+        match &nodes[item.idx] {
+            Node::Branch { .. } => {
+                for idx in BranchIter::new(nodes, item.idx) {
+                    let obj_aabb;
+
+                    let (aabb, distance_2) = match &nodes[idx] {
+                        Node::Branch { aabb, .. } => (aabb, aabb.distance_2(target)),
+                        Node::Twig(_) => unreachable!(),
+                        Node::Leaf(obj) => {
+                            obj_aabb = obj.aabb();
+
+                            (&obj_aabb, obj.distance_2(target))
                         }
+                    };
+
+                    if filter(aabb, distance_2) {
+                        items.push(NearestItem { idx, distance_2 });
                     }
                 }
-                Node::Twig(_) => unreachable!(),
-                Node::Leaf(obj) => return Some(obj),
             }
+            Node::Twig(_) => unreachable!(),
+            Node::Leaf(obj) => visitor(obj, item.distance_2)?,
         }
-
-        None
     }
+
+    ControlFlow::Continue(())
 }
 
 fn minmax_distance_2<P>(aabb: &(P, P), target: &P) -> P::Coord
@@ -158,17 +215,48 @@ mod tests {
                     for target in targets {
                         let result1 = index
                             .objects()
-                            .min_by(|lhs, rhs| {
-                                let lhs = lhs.distance_2(&target);
-                                let rhs = rhs.distance_2(&target);
-
-                                lhs.partial_cmp(&rhs).unwrap()
-                            })
+                            .map(|obj| obj.distance_2(&target))
+                            .min_by(|lhs, rhs| lhs.partial_cmp(rhs).unwrap())
                             .unwrap();
 
-                        let result2 = index.nearest(&target).unwrap();
+                        let (obj, result2) = index.nearest(&target).unwrap();
+                        assert_eq!(obj.distance_2(&target), result2);
 
-                        assert_eq!(result1.distance_2(&target), result2.distance_2(&target));
+                        assert_eq!(result1, result2);
+                    }
+
+                    Ok(())
+                },
+            )
+            .unwrap();
+    }
+
+    #[test]
+    fn random_from_near_to_far() {
+        TestRunner::default()
+            .run(
+                &(random_objects(100), random_points(10)),
+                |(objects, targets)| {
+                    let index = RTree::new(DEF_NODE_LEN, objects);
+
+                    for target in targets {
+                        let mut result1 = index
+                            .objects()
+                            .map(|obj| obj.distance_2(&target))
+                            .collect::<Vec<_>>();
+
+                        result1.sort_unstable_by(|lhs, rhs| lhs.partial_cmp(rhs).unwrap());
+
+                        let mut result2 = Vec::new();
+
+                        index.from_near_to_far(&target, |obj, distance_2| {
+                            assert_eq!(obj.distance_2(&target), distance_2);
+
+                            result2.push(distance_2);
+                            ControlFlow::Continue(())
+                        });
+
+                        assert_eq!(result1, result2);
                     }
 
                     Ok(())
