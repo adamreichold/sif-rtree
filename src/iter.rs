@@ -1,4 +1,4 @@
-use std::iter::{Copied, FusedIterator};
+use std::iter::FusedIterator;
 use std::slice::Iter;
 
 use crate::{Node, Object, TWIG_LEN};
@@ -8,7 +8,7 @@ where
     O: Object,
 {
     twigs: Iter<'a, Node<O>>,
-    idx: Copied<Iter<'a, usize>>,
+    idx: Iter<'a, usize>,
 }
 
 impl<'a, O> BranchIter<'a, O>
@@ -28,7 +28,7 @@ where
         let mut twigs = twigs[..len].iter();
 
         let idx = match twigs.next().unwrap() {
-            Node::Twig(twig) => twig[pad..].iter().copied(),
+            Node::Twig(twig) => twig[pad..].iter(),
             Node::Branch { .. } | Node::Leaf(_) => unreachable!(),
         };
 
@@ -44,12 +44,12 @@ where
 
     fn next(&mut self) -> Option<Self::Item> {
         match self.idx.next() {
-            Some(idx) => Some(idx),
+            Some(idx) => Some(*idx),
             None => match self.twigs.next() {
                 Some(Node::Twig(twig)) => {
-                    self.idx = twig.iter().copied();
+                    self.idx = twig.iter();
 
-                    self.idx.next()
+                    self.idx.next().copied()
                 }
                 Some(Node::Branch { .. }) | Some(Node::Leaf(_)) => unreachable!(),
                 None => None,
