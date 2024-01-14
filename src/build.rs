@@ -22,8 +22,8 @@ where
         let mut nodes = Vec::new();
         let mut next_nodes = Vec::new();
 
-        let root_node = build(node_len, objects, &mut nodes, &mut next_nodes);
-        debug_assert_eq!(root_node, nodes.len() - 1);
+        let root_idx = build(node_len, objects, &mut nodes, &mut next_nodes);
+        debug_assert_eq!(root_idx, nodes.len() - 1);
 
         // The whole tree is reversed, so that iteration visits increasing memory addresses which measurably improves performance.
         nodes.reverse();
@@ -31,7 +31,7 @@ where
         for node in &mut nodes {
             if let Node::Twig(twig) = node {
                 for idx in twig {
-                    *idx = root_node - *idx;
+                    *idx = root_idx - *idx;
                 }
             }
         }

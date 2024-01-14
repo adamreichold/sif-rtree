@@ -4,7 +4,7 @@ use std::mem::swap;
 
 use num_traits::{Float, Zero};
 
-use crate::{iter::BranchIter, Distance, Node, Object, Point, RTree};
+use crate::{iter::BranchIter, Distance, Node, Object, Point, RTree, ROOT_IDX};
 
 impl<O, S> RTree<O, S>
 where
@@ -25,7 +25,7 @@ where
         let mut items = BinaryHeap::new();
 
         items.push(NearestItem {
-            idx: 0,
+            idx: ROOT_IDX,
             distance_2: <O::Point as Point>::Coord::nan(),
         });
 

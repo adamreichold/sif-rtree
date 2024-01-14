@@ -283,6 +283,8 @@ where
     Leaf(O),
 }
 
+const ROOT_IDX: usize = 0;
+
 /// An immutable, flat representation of an [R-tree](https://en.wikipedia.org/wiki/R-tree)
 ///
 /// Accelerates spatial queries by grouping objects based on their axis-aligned bounding boxes (AABB).

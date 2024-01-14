@@ -2,7 +2,7 @@ use std::ops::ControlFlow;
 
 use num_traits::Zero;
 
-use crate::{iter::BranchIter, Distance, Node, Object, Point, RTree};
+use crate::{iter::BranchIter, Distance, Node, Object, Point, RTree, ROOT_IDX};
 
 impl<O, S> RTree<O, S>
 where
@@ -97,7 +97,7 @@ where
                 query,
                 visitor,
             },
-            0,
+            ROOT_IDX,
         )
     }
 }
