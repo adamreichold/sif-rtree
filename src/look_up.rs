@@ -1,8 +1,9 @@
+use std::num::NonZeroUsize;
 use std::ops::ControlFlow;
 
 use num_traits::Zero;
 
-use crate::{iter::branch_for_each, Distance, Node, Object, Point, RTree, ROOT_IDX};
+use crate::{iter::branch_for_each, Distance, Node, Object, Point, RTree};
 
 impl<O, S> RTree<O, S>
 where
@@ -91,14 +92,20 @@ where
     {
         let nodes = self.nodes.as_ref();
 
-        look_up(
-            &mut LookUpArgs {
-                nodes,
-                query,
-                visitor,
-            },
-            ROOT_IDX,
-        )
+        let (node, rest) = nodes.split_first().unwrap();
+
+        match node {
+            Node::Branch { len, .. } => look_up(
+                &mut LookUpArgs {
+                    nodes,
+                    query,
+                    visitor,
+                },
+                len,
+                rest,
+            ),
+            Node::Twig(_) | Node::Leaf(_) => unreachable!(),
+        }
     }
 }
 
@@ -111,23 +118,29 @@ where
     visitor: V,
 }
 
-fn look_up<'a, O, Q, V>(args: &mut LookUpArgs<'a, O, Q, V>, idx: usize) -> ControlFlow<()>
+fn look_up<'a, O, Q, V>(
+    args: &mut LookUpArgs<'a, O, Q, V>,
+    len: &NonZeroUsize,
+    twigs: &[Node<O>],
+) -> ControlFlow<()>
 where
     O: Object,
     Q: FnMut(&'a Node<O>) -> bool,
     V: FnMut(&'a O) -> ControlFlow<()>,
 {
-    let (node, rest) = args.nodes[idx..].split_first().unwrap();
+    branch_for_each(len, twigs, |idx| {
+        let (node, rest) = args.nodes[idx..].split_first().unwrap();
 
-    if (args.query)(node) {
-        match node {
-            Node::Branch { len, .. } => branch_for_each(len, rest, |idx| look_up(args, idx))?,
-            Node::Twig(_) => unreachable!(),
-            Node::Leaf(obj) => (args.visitor)(obj)?,
+        if (args.query)(node) {
+            match node {
+                Node::Branch { len, .. } => look_up(args, len, rest)?,
+                Node::Twig(_) => unreachable!(),
+                Node::Leaf(obj) => (args.visitor)(obj)?,
+            }
         }
-    }
 
-    ControlFlow::Continue(())
+        ControlFlow::Continue(())
+    })
 }
 
 fn intersects<P>(lhs: &(P, P), rhs: &(P, P)) -> bool
