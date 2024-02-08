@@ -120,27 +120,42 @@ where
 
 fn look_up<'a, O, Q, V>(
     args: &mut LookUpArgs<'a, O, Q, V>,
-    len: &NonZeroUsize,
-    twigs: &[Node<O>],
+    mut len: &'a NonZeroUsize,
+    mut twigs: &'a [Node<O>],
 ) -> ControlFlow<()>
 where
     O: Object,
     Q: FnMut(&'a Node<O>) -> bool,
     V: FnMut(&'a O) -> ControlFlow<()>,
 {
-    branch_for_each(len, twigs, |idx| {
-        let (node, rest) = args.nodes[idx..].split_first().unwrap();
+    loop {
+        let mut branch = None;
 
-        if (args.query)(node) {
-            match node {
-                Node::Branch { len, .. } => look_up(args, len, rest)?,
-                Node::Twig(_) => unreachable!(),
-                Node::Leaf(obj) => (args.visitor)(obj)?,
+        branch_for_each(len, twigs, |idx| {
+            let (node, rest) = args.nodes[idx..].split_first().unwrap();
+
+            if (args.query)(node) {
+                match node {
+                    Node::Branch { len, .. } => {
+                        if let Some((len1, twigs1)) = branch.replace((len, rest)) {
+                            look_up(args, len1, twigs1)?;
+                        }
+                    }
+                    Node::Twig(_) => unreachable!(),
+                    Node::Leaf(obj) => (args.visitor)(obj)?,
+                }
             }
-        }
 
-        ControlFlow::Continue(())
-    })
+            ControlFlow::Continue(())
+        })?;
+
+        if let Some((len1, twigs1)) = branch {
+            len = len1;
+            twigs = twigs1;
+        } else {
+            return ControlFlow::Continue(());
+        }
+    }
 }
 
 fn intersects<P>(lhs: &(P, P), rhs: &(P, P)) -> bool
