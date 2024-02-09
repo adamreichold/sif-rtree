@@ -257,7 +257,7 @@ const TWIG_LEN: usize = 4;
 ///
 /// The tree starts at a root node which is always a [`Branch`][Self::Branch] stored at index zero.
 /// It ends with the [`Leaf`][Self::Leaf] nodes which contains the objects stored in the tree.
-#[derive(Debug)]
+#[derive(Debug, Clone)]
 #[cfg_attr(feature = "serde", derive(Serialize, Deserialize))]
 pub enum Node<O>
 where
