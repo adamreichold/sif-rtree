@@ -290,7 +290,7 @@ const ROOT_IDX: usize = 0;
 /// Accelerates spatial queries by grouping objects based on their axis-aligned bounding boxes (AABB).
 ///
 /// Note that this tree dereferences to and deserializes as a slice of nodes. Modifying node geometry through interior mutability or deserializing a modified sequence is safe but will lead to incorrect results.
-#[derive(Debug)]
+#[derive(Debug, Clone)]
 #[cfg_attr(feature = "serde", derive(Serialize, Deserialize))]
 #[cfg_attr(feature = "serde", serde(transparent))]
 pub struct RTree<O, S = Box<[Node<O>]>>
