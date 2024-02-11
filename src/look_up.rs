@@ -90,22 +90,22 @@ where
         Q: FnMut(&'a Node<O>) -> bool,
         V: FnMut(&'a O) -> ControlFlow<()>,
     {
-        let nodes = self.nodes.as_ref();
+        let mut args = LookUpArgs {
+            nodes: self.nodes.as_ref(),
+            query,
+            visitor,
+        };
 
-        let (node, rest) = nodes.split_first().unwrap();
+        let (node, rest) = args.nodes.split_first().unwrap();
 
-        match node {
-            Node::Branch { len, .. } => look_up(
-                &mut LookUpArgs {
-                    nodes,
-                    query,
-                    visitor,
-                },
-                len,
-                rest,
-            ),
-            Node::Twig(_) | Node::Leaf(_) => unreachable!(),
+        if (args.query)(node) {
+            match node {
+                Node::Branch { len, .. } => look_up(&mut args, len, rest)?,
+                Node::Twig(_) | Node::Leaf(_) => unreachable!(),
+            }
         }
+
+        ControlFlow::Continue(())
     }
 }
 
