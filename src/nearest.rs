@@ -88,7 +88,9 @@ where
     });
 
     while let Some(item) = items.pop() {
-        let (node, rest) = nodes[item.idx..].split_first().unwrap();
+        let [node, rest @ ..] = &nodes[item.idx..] else {
+            unreachable!()
+        };
 
         match node {
             Node::Branch { len, .. } => branch_for_each(len, rest, |idx| {

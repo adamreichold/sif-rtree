@@ -214,7 +214,9 @@ mod tests {
         branches: &mut Vec<usize>,
         leaves: &mut Vec<&'a RandomObject>,
     ) {
-        let (node, rest) = nodes[idx..].split_first().unwrap();
+        let [node, rest @ ..] = &nodes[idx..] else {
+            unreachable!()
+        };
         let len = match node {
             Node::Branch { len, .. } => len,
             Node::Twig(_) | Node::Leaf(_) => unreachable!(),

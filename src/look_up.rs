@@ -3,7 +3,7 @@ use std::ops::ControlFlow;
 
 use num_traits::Zero;
 
-use crate::{iter::branch_for_each, Distance, Node, Object, Point, RTree};
+use crate::{iter::branch_for_each, Distance, Node, Object, Point, RTree, ROOT_IDX};
 
 impl<O, S> RTree<O, S>
 where
@@ -96,7 +96,9 @@ where
             visitor,
         };
 
-        let (node, rest) = args.nodes.split_first().unwrap();
+        let [node, rest @ ..] = &args.nodes[ROOT_IDX..] else {
+            unreachable!()
+        };
 
         if (args.query)(node) {
             match node {
@@ -132,7 +134,9 @@ where
         let mut branch = None;
 
         branch_for_each(len, twigs, |idx| {
-            let (node, rest) = args.nodes[idx..].split_first().unwrap();
+            let [node, rest @ ..] = &args.nodes[idx..] else {
+                unreachable!()
+            };
 
             if (args.query)(node) {
                 match node {
