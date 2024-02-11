@@ -17,9 +17,9 @@ num-traits = "0.2"
 serde = { version = "1.0", features = ["derive"], optional = true }
 
 [dev-dependencies]
-memmap2 = "0.7"
+memmap2 = "0.9"
 proptest = "1.1"
-rstar = "0.11"
+rstar = "0.12"
 
 [package.metadata.docs.rs]
 all-features = true
