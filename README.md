@@ -1,4 +1,4 @@
-# sif-kdtree
+# sif-rtree
 
 [![crates.io](https://img.shields.io/crates/v/sif-rtree.svg)](https://crates.io/crates/sif-rtree)
 [![docs.rs](https://docs.rs/sif-rtree/badge.svg)](https://docs.rs/sif-rtree)
