@@ -58,7 +58,7 @@ where
     let next_nodes_len = next_nodes.len();
 
     if objects.len() > node_len {
-        let num_clusters = num_clusters(node_len, O::Point::DIM, objects.len());
+        let num_clusters = num_clusters(node_len, O::Point::DIM, objects.len()).max(2);
 
         struct State<O> {
             objects: Vec<O>,
@@ -111,13 +111,13 @@ where
 }
 
 fn num_clusters(node_len: usize, point_dim: usize, num_objects: usize) -> usize {
-    let node_len = node_len as f64;
-    let point_dim = point_dim as f64;
-    let num_objects = num_objects as f64;
+    let node_len = node_len as f32;
+    let point_dim = point_dim as f32;
+    let num_objects = num_objects as f32;
 
-    let depth = num_objects.log(node_len).ceil() as usize;
+    let depth = num_objects.log(node_len).ceil() as i32;
 
-    let subtree_len = node_len.powi(depth as i32 - 1);
+    let subtree_len = node_len.powi(depth - 1);
     let num_subtree = (num_objects / subtree_len).ceil();
 
     num_subtree.powf(point_dim.recip()).ceil() as usize

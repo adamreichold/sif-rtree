@@ -1,7 +1,7 @@
 [package]
 name = "sif-rtree"
 description = "simple, immutable, flat R-tree"
-version = "0.2.9"
+version = "0.2.10"
 edition = "2021"
 rust-version = "1.65"
 authors = ["Adam Reichold <adam.reichold@t-online.de>"]
