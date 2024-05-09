@@ -127,8 +127,6 @@ fn add_branch<O>(nodes: &mut Vec<Node<O>>, next_nodes: &[usize]) -> usize
 where
     O: Object,
 {
-    let nodes_len = nodes.len();
-
     let len = NonZeroUsize::new(next_nodes.len()).unwrap();
 
     let aabb = merge_aabb(nodes, next_nodes);
@@ -140,30 +138,27 @@ where
         nodes.reserve(len + 1);
 
         let mut twig = [0; TWIG_LEN];
-        let mut pos = pad;
+        let mut pos = TWIG_LEN;
 
-        for next_node in next_nodes {
-            if pos == TWIG_LEN {
-                nodes.push(Node::Twig(twig));
-                pos = 0;
-            }
-
+        // The twigs in the branch are reversed, so that after reversing the whole tree, they will follow the branch in ascending order.
+        for next_node in next_nodes.iter().rev() {
+            pos -= 1;
             twig[pos] = *next_node;
-            pos += 1;
+
+            if pos == 0 {
+                nodes.push(Node::Twig(twig));
+                pos = TWIG_LEN;
+            }
         }
 
-        if pos != 0 {
+        if pos != TWIG_LEN {
+            debug_assert_eq!(pos, pad);
             nodes.push(Node::Twig(twig));
         }
     }
 
     let node = nodes.len();
-
-    // The twigs in the branch are reversed, so that after reversing the whole tree, they will follow the branch in ascending order.
-    nodes[nodes_len..node].reverse();
-
     nodes.push(Node::Branch { len, aabb });
-
     node
 }
 
