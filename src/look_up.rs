@@ -20,9 +20,9 @@ where
         V: FnMut(&'a O) -> ControlFlow<()>,
     {
         let query = |node: &Node<O>| match node {
-            Node::Branch { aabb, .. } => intersects(aabb, query),
+            Node::Branch { aabb, .. } => intersects(query, aabb),
             Node::Twig(_) => unreachable!(),
-            Node::Leaf(obj) => contains(&obj.aabb(), query),
+            Node::Leaf(obj) => contains(query, &obj.aabb()),
         };
 
         self.look_up(query, visitor)
@@ -38,9 +38,9 @@ where
         V: FnMut(&'a O) -> ControlFlow<()>,
     {
         let query = |node: &Node<O>| match node {
-            Node::Branch { aabb, .. } => intersects(aabb, query),
+            Node::Branch { aabb, .. } => intersects(query, aabb),
             Node::Twig(_) => unreachable!(),
-            Node::Leaf(obj) => intersects(&obj.aabb(), query),
+            Node::Leaf(obj) => intersects(query, &obj.aabb()),
         };
 
         self.look_up(query, visitor)
@@ -223,7 +223,7 @@ mod tests {
                     for query in queries {
                         let mut results1 = index
                             .objects()
-                            .filter(|obj| contains(&obj.aabb(), &query.aabb()))
+                            .filter(|obj| contains(&query.aabb(), &obj.aabb()))
                             .collect::<Vec<_>>();
 
                         let mut results2 = Vec::new();
@@ -254,7 +254,7 @@ mod tests {
                     for query in queries {
                         let mut results1 = index
                             .objects()
-                            .filter(|obj| intersects(&obj.aabb(), &query.aabb()))
+                            .filter(|obj| intersects(&query.aabb(), &obj.aabb()))
                             .collect::<Vec<_>>();
 
                         let mut results2 = Vec::new();
