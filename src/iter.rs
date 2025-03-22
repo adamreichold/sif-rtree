@@ -3,14 +3,14 @@ use std::ops::ControlFlow;
 
 use crate::{Node, Object, TWIG_LEN};
 
-pub fn branch_for_each<O, V>(
+pub fn branch_for_each<O, V, R>(
     len: &NonZeroUsize,
     twigs: &[Node<O>],
     mut visitor: V,
-) -> ControlFlow<()>
+) -> ControlFlow<R>
 where
     O: Object,
-    V: FnMut(usize) -> ControlFlow<()>,
+    V: FnMut(usize) -> ControlFlow<R>,
 {
     let (len, pad) = twig_len_pad(len);
 

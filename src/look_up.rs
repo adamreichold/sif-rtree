@@ -11,13 +11,13 @@ where
     S: AsRef<[Node<O>]>,
 {
     /// Locates all objects whose axis-aligned bounding box (AABB) is contained in the queried AABB
-    pub fn look_up_aabb_contains<'a, V>(
+    pub fn look_up_aabb_contains<'a, V, R>(
         &'a self,
         query: &(O::Point, O::Point),
         visitor: V,
-    ) -> ControlFlow<()>
+    ) -> ControlFlow<R>
     where
-        V: FnMut(&'a O) -> ControlFlow<()>,
+        V: FnMut(&'a O) -> ControlFlow<R>,
     {
         let query = |node: &Node<O>| match node {
             Node::Branch { aabb, .. } => intersects(query, aabb),
@@ -29,13 +29,13 @@ where
     }
 
     /// Locates all objects whose axis-aligned bounding box (AABB) intersects the queried AABB
-    pub fn look_up_aabb_intersects<'a, V>(
+    pub fn look_up_aabb_intersects<'a, V, R>(
         &'a self,
         query: &(O::Point, O::Point),
         visitor: V,
-    ) -> ControlFlow<()>
+    ) -> ControlFlow<R>
     where
-        V: FnMut(&'a O) -> ControlFlow<()>,
+        V: FnMut(&'a O) -> ControlFlow<R>,
     {
         let query = |node: &Node<O>| match node {
             Node::Branch { aabb, .. } => intersects(query, aabb),
@@ -47,11 +47,11 @@ where
     }
 
     /// Locates all objects which contain the queried point
-    pub fn look_up_at_point<'a, V>(&'a self, query: &O::Point, visitor: V) -> ControlFlow<()>
+    pub fn look_up_at_point<'a, V, R>(&'a self, query: &O::Point, visitor: V) -> ControlFlow<R>
     where
         O: Distance<O::Point>,
         O::Point: Distance<O::Point>,
-        V: FnMut(&'a O) -> ControlFlow<()>,
+        V: FnMut(&'a O) -> ControlFlow<R>,
     {
         let query = |node: &Node<O>| match node {
             Node::Branch { aabb, .. } => aabb.contains(query),
@@ -63,16 +63,16 @@ where
     }
 
     /// Locates all objects which are within the given `distance` of the given `center`
-    pub fn look_up_within_distance_of_point<'a, V>(
+    pub fn look_up_within_distance_of_point<'a, V, R>(
         &'a self,
         center: &O::Point,
         distance: <O::Point as Point>::Coord,
         visitor: V,
-    ) -> ControlFlow<()>
+    ) -> ControlFlow<R>
     where
         O: Distance<O::Point>,
         O::Point: Distance<O::Point>,
-        V: FnMut(&'a O) -> ControlFlow<()>,
+        V: FnMut(&'a O) -> ControlFlow<R>,
     {
         let distance_2 = distance * distance;
 
@@ -85,10 +85,10 @@ where
         self.look_up(query, visitor)
     }
 
-    fn look_up<'a, Q, V>(&'a self, query: Q, visitor: V) -> ControlFlow<()>
+    fn look_up<'a, Q, V, R>(&'a self, query: Q, visitor: V) -> ControlFlow<R>
     where
         Q: FnMut(&'a Node<O>) -> bool,
-        V: FnMut(&'a O) -> ControlFlow<()>,
+        V: FnMut(&'a O) -> ControlFlow<R>,
     {
         let mut args = LookUpArgs {
             nodes: self.nodes.as_ref(),
@@ -120,15 +120,15 @@ where
     visitor: V,
 }
 
-fn look_up<'a, O, Q, V>(
+fn look_up<'a, O, Q, V, R>(
     args: &mut LookUpArgs<'a, O, Q, V>,
     mut len: &'a NonZeroUsize,
     mut twigs: &'a [Node<O>],
-) -> ControlFlow<()>
+) -> ControlFlow<R>
 where
     O: Object,
     Q: FnMut(&'a Node<O>) -> bool,
-    V: FnMut(&'a O) -> ControlFlow<()>,
+    V: FnMut(&'a O) -> ControlFlow<R>,
 {
     loop {
         let mut branch = None;
@@ -227,10 +227,13 @@ mod tests {
                             .collect::<Vec<_>>();
 
                         let mut results2 = Vec::new();
-                        index.look_up_aabb_contains(&query.aabb(), |obj| {
-                            results2.push(obj);
-                            ControlFlow::Continue(())
-                        });
+                        index
+                            .look_up_aabb_contains(&query.aabb(), |obj| {
+                                results2.push(obj);
+                                ControlFlow::<()>::Continue(())
+                            })
+                            .continue_value()
+                            .unwrap();
 
                         results1.sort_unstable();
                         results2.sort_unstable();
@@ -258,10 +261,13 @@ mod tests {
                             .collect::<Vec<_>>();
 
                         let mut results2 = Vec::new();
-                        index.look_up_aabb_intersects(&query.aabb(), |obj| {
-                            results2.push(obj);
-                            ControlFlow::Continue(())
-                        });
+                        index
+                            .look_up_aabb_intersects(&query.aabb(), |obj| {
+                                results2.push(obj);
+                                ControlFlow::<()>::Continue(())
+                            })
+                            .continue_value()
+                            .unwrap();
 
                         results1.sort_unstable();
                         results2.sort_unstable();
@@ -289,10 +295,13 @@ mod tests {
                             .collect::<Vec<_>>();
 
                         let mut results2 = Vec::new();
-                        index.look_up_at_point(&query, |obj| {
-                            results2.push(obj);
-                            ControlFlow::Continue(())
-                        });
+                        index
+                            .look_up_at_point(&query, |obj| {
+                                results2.push(obj);
+                                ControlFlow::<()>::Continue(())
+                            })
+                            .continue_value()
+                            .unwrap();
 
                         results1.sort_unstable();
                         results2.sort_unstable();
@@ -324,10 +333,13 @@ mod tests {
                             .collect::<Vec<_>>();
 
                         let mut results2 = Vec::new();
-                        index.look_up_within_distance_of_point(center, distance, |obj| {
-                            results2.push(obj);
-                            ControlFlow::Continue(())
-                        });
+                        index
+                            .look_up_within_distance_of_point(center, distance, |obj| {
+                                results2.push(obj);
+                                ControlFlow::<()>::Continue(())
+                            })
+                            .continue_value()
+                            .unwrap();
 
                         results1.sort_unstable();
                         results2.sort_unstable();
