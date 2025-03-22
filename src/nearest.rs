@@ -21,11 +21,9 @@ where
     ///
     /// Returns `None` if no object has a finite distance to the `target`.
     pub fn nearest(&self, target: &O::Point) -> Option<(&O, <O::Point as Point>::Coord)> {
-        let mut nearest = None;
-
         let mut min_minmax_distance_2 = <O::Point as Point>::Coord::infinity();
 
-        from_near_to_far(
+        let nearest = from_near_to_far(
             self.nodes.as_ref(),
             target,
             |aabb, distance_2| {
@@ -41,21 +39,21 @@ where
                     false
                 }
             },
-            |object, distance_2| {
-                nearest = Some((object, distance_2));
-                ControlFlow::Break(())
-            },
+            |object, distance_2| ControlFlow::Break((object, distance_2)),
         );
 
-        nearest
+        match nearest {
+            ControlFlow::Break(nearest) => Some(nearest),
+            ControlFlow::Continue(()) => None,
+        }
     }
 
     /// Visit all objects in ascending order of their distance to the given `target`
     ///
     /// Yields references to the objects and their squared distances to the `target`.
-    pub fn from_near_to_far<'a, V>(&'a self, target: &O::Point, visitor: V) -> ControlFlow<()>
+    pub fn from_near_to_far<'a, V, R>(&'a self, target: &O::Point, visitor: V) -> ControlFlow<R>
     where
-        V: FnMut(&'a O, <O::Point as Point>::Coord) -> ControlFlow<()>,
+        V: FnMut(&'a O, <O::Point as Point>::Coord) -> ControlFlow<R>,
     {
         from_near_to_far(
             self.nodes.as_ref(),
@@ -66,19 +64,19 @@ where
     }
 }
 
-fn from_near_to_far<'a, O, F, V>(
+fn from_near_to_far<'a, O, F, V, R>(
     nodes: &'a [Node<O>],
     target: &O::Point,
     mut filter: F,
     mut visitor: V,
-) -> ControlFlow<()>
+) -> ControlFlow<R>
 where
     O: Object,
     O: Distance<O::Point>,
     O::Point: Distance<O::Point>,
     <O::Point as Point>::Coord: Float,
     F: FnMut(&(O::Point, O::Point), <O::Point as Point>::Coord) -> bool,
-    V: FnMut(&'a O, <O::Point as Point>::Coord) -> ControlFlow<()>,
+    V: FnMut(&'a O, <O::Point as Point>::Coord) -> ControlFlow<R>,
 {
     let mut items = BinaryHeap::new();
 
@@ -253,12 +251,15 @@ mod tests {
 
                         let mut result2 = Vec::new();
 
-                        index.from_near_to_far(&target, |obj, distance_2| {
-                            assert_eq!(obj.distance_2(&target), distance_2);
+                        index
+                            .from_near_to_far(&target, |obj, distance_2| {
+                                assert_eq!(obj.distance_2(&target), distance_2);
 
-                            result2.push(distance_2);
-                            ControlFlow::Continue(())
-                        });
+                                result2.push(distance_2);
+                                ControlFlow::<()>::Continue(())
+                            })
+                            .continue_value()
+                            .unwrap();
 
                         assert_eq!(result1, result2);
                     }

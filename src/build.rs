@@ -226,8 +226,10 @@ mod tests {
                     leaves.push(obj);
                 }
             }
-            ControlFlow::Continue(())
-        });
+            ControlFlow::<()>::Continue(())
+        })
+        .continue_value()
+        .unwrap();
     }
 
     fn collect_rstar_index<'a>(
