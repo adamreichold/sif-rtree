@@ -1,3 +1,7 @@
+This repository was moved to <https://codeberg.org/adamreichold/sif-rtree>.
+
+---
+
 # sif-rtree
 
 [![crates.io](https://img.shields.io/crates/v/sif-rtree.svg)](https://crates.io/crates/sif-rtree)
